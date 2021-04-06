@@ -24,6 +24,7 @@ Keras RetinaNet implementation (https://github.com/fizyr/keras-retinanet) licens
 """
 
 import cv2
+
 import numpy as np
 import os
 import math
@@ -45,16 +46,16 @@ def main():
 
     #input parameter
     phi = 0
-    path_to_weights = "./weights/phi_0_occlusion_best_ADD(-S).h5"
+    path_to_weights = "./color_500e.h5"
     # save_path = "./predictions/occlusion/" #where to save the images or None if the images should be displayed and not saved
     save_path = None
     image_extension = ".jpg"
     class_to_name = {0: "ape", 1: "can", 2: "cat", 3: "driller", 4: "duck", 5: "eggbox", 6: "glue", 7: "holepuncher"} #Occlusion
-    #class_to_name = {0: "driller"} #Linemod use a single class with a name of the Linemod objects
-    score_threshold = 0.5
+    class_to_name = {0: "cube"} #Linemod use a single class with a name of the Linemod objects
+    score_threshold = 0.8
     translation_scale_norm = 1000.0
-    draw_bbox_2d = False
-    draw_name = False
+    draw_bbox_2d = True
+    draw_name = True
     #you probably need to replace the linemod camera matrix with the one of your webcam
     camera_matrix = get_linemod_camera_matrix()
     name_to_3d_bboxes = get_linemod_3d_bboxes()
@@ -65,8 +66,9 @@ def main():
     #build model and load weights
     model, image_size = build_model_and_load_weights(phi, num_classes, score_threshold, path_to_weights)
     
-    webcam = cv2.VideoCapture(0)
-    
+    webcam = cv2.VideoCapture("http://192.168.2.79:8080/stream/video.mjpeg")
+    init_distance = 0
+    delta = 100
     #inferencing
     print("\nStarting inference...\n")
     i = 0
@@ -75,6 +77,14 @@ def main():
         got_image, image = webcam.read()
         if not got_image:
             continue
+
+        scale_percent = 640./1920. # percent of original size
+        width = int(image.shape[1] * scale_percent)
+        height = int(image.shape[0] * scale_percent)
+        dim = (width, height)
+        
+        # resize image
+        image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
         
         original_image = image.copy()
         
@@ -83,9 +93,12 @@ def main():
         
         #predict
         boxes, scores, labels, rotations, translations = model.predict_on_batch(input_list)
-        
+
         #postprocessing
         boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
+
+        if(boxes.shape[0]>0 and init_distance==0):
+            init_distance = np.linalg.norm(translations)
         
         draw_detections(original_image,
                         boxes,
@@ -99,11 +112,42 @@ def main():
                         draw_bbox_2d = draw_bbox_2d,
                         draw_name = draw_name)
         
+        #print(rotations,translations)
+
+
+
+                
+        # font
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        
+        # org
+        org = (50, 50)
+              # org
+        org1 = (50, 100)  
+        # fontScale
+        fontScale = 1
+        
+        # Blue color in BGR
+        color = (255, 255, 0)
+        
+        # Line thickness of 2 px
+        thickness = 2
+        
+        # Using cv2.putText() method
+        # See Obj:
+        if(boxes.shape[0]>0):
+            original_image = cv2.putText(original_image, 'Dist:'+str(np.round(np.linalg.norm(translations))), org, font, 
+                            fontScale, color, thickness, cv2.LINE_AA)
+            if(init_distance-np.linalg.norm(translations)>delta):
+                original_image = cv2.putText(original_image, 'Hand', org1, font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
+            else:
+                original_image = cv2.putText(original_image, 'Dropped', org1, font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
         #display image with predictions
         cv2.imshow('image with predictions', original_image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        
         if not save_path is None:
             #images to the given path
             os.makedirs(save_path, exist_ok = True)
@@ -133,7 +177,8 @@ def get_linemod_camera_matrix():
         The Linemod and Occlusion 3x3 camera matrix
 
     """
-    return np.array([[572.4114, 0., 325.2611], [0., 573.57043, 242.04899], [0., 0., 1.]], dtype = np.float32)
+    return np.array([[ 5.28024414e+02, 0., 3.24288666e+02], [0., 5.31480530e+02, 1.81692596e+02], [0., 0., 1. ]], dtype = np.float32)
+
 
 
 def get_linemod_3d_bboxes():
@@ -154,8 +199,9 @@ def get_linemod_3d_bboxes():
                             "holepuncher":  {"diameter": 145.54287471, "min_x": -50.44390000, "min_y": -54.24850000, "min_z": -45.40000000, "size_x": 100.88780000, "size_y": 108.49700000, "size_z": 90.80000000},
                             "iron":         {"diameter": 278.07811733, "min_x": -129.11300000, "min_y": -59.24100000, "min_z": -70.56620000, "size_x": 258.22600000, "size_y": 118.48210000, "size_z": 141.13240000},
                             "lamp":         {"diameter": 282.60129399, "min_x": -101.57300000, "min_y": -58.87630000, "min_z": -106.55800000, "size_x": 203.14600000, "size_y": 117.75250000, "size_z": 213.11600000},
-                            "phone":        {"diameter": 212.35825148, "min_x": -46.95910000, "min_y": -73.71670000, "min_z": -92.37370000, "size_x": 93.91810000, "size_y": 147.43340000, "size_z": 184.74740000}}
-        
+                            "phone":        {"diameter": 212.35825148, "min_x": -46.95910000, "min_y": -73.71670000, "min_z": -92.37370000, "size_x": 93.91810000, "size_y": 147.43340000, "size_z": 184.74740000},
+                            "cube":         {"diameter": 60.373835392, "min_x": -27.5, "min_y": -27.5, "min_z": -27.5, "size_x": 55., "size_y": 55., "size_z": 55.0}}
+                
     name_to_3d_bboxes = {name: convert_bbox_3d(model_info) for name, model_info in name_to_model_info.items()}
     
     return name_to_3d_bboxes

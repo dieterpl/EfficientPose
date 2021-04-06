@@ -43,9 +43,9 @@ class LineModGenerator(Generator):
     def __init__(self, 
                  dataset_base_path,
                  object_id,
-                 image_extension = ".png",
+                 image_extension = ".jpg",
                  shuffle_dataset = True,
-                  symmetric_objects = {"glue", 11, "eggbox", 10}, #set with names and indices of symmetric objects
+                  symmetric_objects = {"glue", 11, "eggbox", 10,"cube",16}, #set with names and indices of symmetric objects
                  **kwargs):
         """
         Initializes a Linemod generator
@@ -357,11 +357,13 @@ class LineModGenerator(Generator):
         example_ids = [int(filename.split(".")[0]) for filename in all_filenames]
         filtered_gt_lists = [gt_dict[key] for key in example_ids]#creates a list containing lists of all annotations per image. usually one element but at object id 2 is also the occlusion dataset included
         filtered_gts = []
+        i =0
         for gt_list in filtered_gt_lists:
+            i+=1
             #search all annotations with the given object id
             all_annos = [anno for anno in gt_list if anno["obj_id"] == self.object_id]
             if len(all_annos) <= 0:
-                print("\nError: No annotation found!")
+                print("\nError: No annotation found!"+str(i)+str(gt_list))
                 filtered_gts.append(None)
             elif len(all_annos) > 1:
                 print("\nWarning: found more than one annotation. using only the first annotation")

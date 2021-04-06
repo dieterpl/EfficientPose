@@ -28,9 +28,9 @@ import numpy as np
 import os
 from tqdm import tqdm
 import math
-
 import tensorflow as tf
-
+#import tensorflow.compat.v1 as tf
+#tf.disable_v2_behavior()
 from model import build_EfficientPose
 from utils import preprocess_image
 from utils.visualization import draw_detections
@@ -45,18 +45,19 @@ def main():
     allow_gpu_growth_memory()
 
     #input parameter
-    path_to_images = "/Datasets/Linemod_preprocessed/data/02/rgb/"
-    image_extension = ".png"
+    path_to_images = "./Linemod_preprocessed/data/16/rgb"
+    image_extension = ".jpg"
     phi = 0
-    path_to_weights = "./weights/phi_0_occlusion_best_ADD(-S).h5"
-    save_path = "./predictions/occlusion/" #where to save the images or None if the images should be displayed and not saved
+    path_to_weights = "./checkpoints/04_04_2021_23_55_51/object_16/phi_0_linemod_best_ADD-S.h5"
+    save_path = "./predictions/" #where to save the images or None if the images should be displayed and not saved
     # save_path = None
     class_to_name = {0: "ape", 1: "can", 2: "cat", 3: "driller", 4: "duck", 5: "eggbox", 6: "glue", 7: "holepuncher"} #Occlusion
+    class_to_name = {0: "cube"}
     #class_to_name = {0: "driller"} #Linemod use a single class with a name of the Linemod objects
     score_threshold = 0.5
     translation_scale_norm = 1000.0
-    draw_bbox_2d = False
-    draw_name = False
+    draw_bbox_2d = True
+    draw_name = True
     #for the linemod and occlusion trained models take this camera matrix and these 3d models. in case you trained a model on a custom dataset you need to take the camera matrix and 3d cuboids from your custom dataset.
     camera_matrix = get_linemod_camera_matrix()
     name_to_3d_bboxes = get_linemod_3d_bboxes()
@@ -86,10 +87,23 @@ def main():
         
         #predict
         boxes, scores, labels, rotations, translations = model.predict_on_batch(input_list)
-        
+        print(image_filename)
+        print("Trans:",translations[:,0,:][0])
+        print("Rot:",rotations[:,0,:][0])
+        print("Boxes:",boxes[:,0,:][0])
+
+        # Computing rotation matrix
+        test = [ 9.72052753e-01, 2.33968005e-01, -1.92990061e-02,1.98842332e-01, -8.64236653e-01, -4.62121934e-01,-1.24800652e-01, 4.45369422e-01, -8.86606395e-01 ]
+        rot_mat = np.array(test).reshape(3,3)
+        rvec,_ = cv2.Rodrigues(rot_mat)
+        print(rvec)
         #postprocessing
         boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
         
+        print("Post_Trans:",translations)
+        print("Post_Rot:",rotations)
+        print("Post_Boxes:",boxes)
+
         draw_detections(original_image,
                         boxes,
                         scores,
@@ -128,7 +142,7 @@ def get_linemod_camera_matrix():
         The Linemod and Occlusion 3x3 camera matrix
 
     """
-    return np.array([[572.4114, 0., 325.2611], [0., 573.57043, 242.04899], [0., 0., 1.]], dtype = np.float32)
+    return np.array([[ 5.28024414e+02, 0., 3.24288666e+02], [0., 5.31480530e+02, 1.81692596e+02], [0., 0., 1. ]], dtype = np.float32)
 
 
 def get_linemod_3d_bboxes():
@@ -149,7 +163,8 @@ def get_linemod_3d_bboxes():
                             "holepuncher":  {"diameter": 145.54287471, "min_x": -50.44390000, "min_y": -54.24850000, "min_z": -45.40000000, "size_x": 100.88780000, "size_y": 108.49700000, "size_z": 90.80000000},
                             "iron":         {"diameter": 278.07811733, "min_x": -129.11300000, "min_y": -59.24100000, "min_z": -70.56620000, "size_x": 258.22600000, "size_y": 118.48210000, "size_z": 141.13240000},
                             "lamp":         {"diameter": 282.60129399, "min_x": -101.57300000, "min_y": -58.87630000, "min_z": -106.55800000, "size_x": 203.14600000, "size_y": 117.75250000, "size_z": 213.11600000},
-                            "phone":        {"diameter": 212.35825148, "min_x": -46.95910000, "min_y": -73.71670000, "min_z": -92.37370000, "size_x": 93.91810000, "size_y": 147.43340000, "size_z": 184.74740000}}
+                            "phone":        {"diameter": 212.35825148, "min_x": -46.95910000, "min_y": -73.71670000, "min_z": -92.37370000, "size_x": 93.91810000, "size_y": 147.43340000, "size_z": 184.74740000},
+                            "cube":         {"diameter": 55.0, "min_x": -27.5, "min_y": -27.5, "min_z": -27.5, "size_x": 55., "size_y": 55., "size_z": 55.0}}
         
     name_to_3d_bboxes = {name: convert_bbox_3d(model_info) for name, model_info in name_to_model_info.items()}
     

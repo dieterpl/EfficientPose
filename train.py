@@ -262,7 +262,7 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
             log_dir = tensorboard_dir,
             histogram_freq = 0,
             batch_size = args.batch_size,
-            write_graph = True,
+            write_graph = False,
             write_grads = False,
             write_images = False,
             embeddings_freq = 0,

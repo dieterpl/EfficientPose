@@ -239,13 +239,13 @@ def check_6d_pose_add(model_3d_points, model_3d_diameter, rotation_gt, translati
 
     distances = np.linalg.norm(transformed_points_gt - transformed_points_pred, axis = -1)
     mean_distances = np.mean(distances)
-    
     if mean_distances <= (model_3d_diameter * diameter_threshold):
         is_correct = True
     else:
         is_correct = False
+    print("add",mean_distances,is_correct)
         
-    return is_correct, mean_distances, transformed_points_gt
+    return is_correct, mean_distances, transformed_points_gt,transformed_points_pred
 
 
 def check_6d_pose_add_s(model_3d_points, model_3d_diameter, rotation_gt, translation_gt, rotation_pred, translation_pred, diameter_threshold = 0.1, max_points = 1000):    
@@ -274,12 +274,12 @@ def check_6d_pose_add_s(model_3d_points, model_3d_diameter, rotation_gt, transla
     
     min_distances = wrapper_c_min_distances(transformed_points_gt[::step, :], transformed_points_pred[::step, :])
     mean_distances = np.mean(min_distances)
-    
+
     if mean_distances <= (model_3d_diameter * diameter_threshold):
         is_correct = True
     else:
         is_correct = False
-        
+    print("add-s",mean_distances,is_correct)        
     return is_correct, mean_distances
 
 
@@ -341,7 +341,7 @@ def check_6d_pose_5cm_5degree(rotation_gt, translation_gt, rotation_pred, transl
     return is_correct, translation_distance, rotation_distance
 
 
-def test_draw(image, camera_matrix, points_3d):
+def test_draw(image, camera_matrix, points_3d,i):
     """ Projects and draws 3D points onto a 2D image and shows the image for debugging purposes
 
     # Arguments
@@ -357,8 +357,8 @@ def test_draw(image, camera_matrix, points_3d):
     for point in tuple_points:
         cv2.circle(image, point, 2, (255, 0, 0), -1)
         
-    cv2.imshow('image', image)
-    cv2.waitKey(0)
+    cv2.imwrite('debug/image'+str(i)+'.jpg', image)
+    #cv2.waitKey(0)
 
 
 def evaluate(
@@ -449,7 +449,7 @@ def evaluate(
                     true_positives  = np.append(true_positives, 1)
                     detected_annotations.append(assigned_annotation)
                     #correct 2d object detection => check if the 6d pose is also correct
-                    is_correct_6d_pose_add, mean_distances_add, transformed_points_gt = check_6d_pose_add(model_3d_points,
+                    is_correct_6d_pose_add, mean_distances_add, transformed_points_gt,transformed_points_pred = check_6d_pose_add(model_3d_points,
                                                                                                         model_3d_diameter,
                                                                                                         rotation_gt = generator.axis_angle_to_rotation_mat(assigned_rotation),
                                                                                                         translation_gt = np.squeeze(assigned_translation),
@@ -479,7 +479,7 @@ def evaluate(
                                                                              pixel_threshold = 5.0)
                     
                     # #draw transformed gt points in image to test the transformation
-                    # test_draw(generator.load_image(i), generator.load_camera_matrix(i), transformed_points_gt)
+                    test_draw(generator.load_image(i), generator.load_camera_matrix(i), transformed_points_pred,i)
                     
                     if is_correct_6d_pose_add:
                         true_positives_add  = np.append(true_positives_add, 1)
