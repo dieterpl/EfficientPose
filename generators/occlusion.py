@@ -42,10 +42,10 @@ class OcclusionGenerator(Generator):
     """
     def __init__(self,
                  dataset_base_path,
-                 object_ids = {"ape": 1, "can": 5, "cat": 6, "driller": 8, "duck": 9, "eggbox": 10, "glue": 11, "holepuncher": 12}, #dictionary with the names and object ids of the occlusion dataset
-                 image_extension = ".png",
+                 object_ids = {"cube": 1, "sock": 2}, #dictionary with the names and object ids of the occlusion dataset
+                 image_extension = ".jpg",
                  shuffle_dataset = True,
-                  symmetric_objects = {"glue", 11, "eggbox", 10}, #set with names and indices of symmetric objects
+                  symmetric_objects = {"cube", 1, "sock", 2}, #set with names and indices of symmetric objects
                  **kwargs):
         """
         Initializes a Occlusion generator
@@ -68,17 +68,11 @@ class OcclusionGenerator(Generator):
         self.object_id = 2 #hardcored for occlusion
         
         #set the class and name dict for mapping each other
-        self.class_to_name = {0: "ape", 1: "can", 2: "cat", 3: "driller", 4: "duck", 5: "eggbox", 6: "glue", 7: "holepuncher"}
+        self.class_to_name = {0: "cube", 1: "sock"}
         self.name_to_class = {val: key for key, val in self.class_to_name.items()}
         self.object_ids_to_class_labels, self.class_labels_to_object_ids = self.map_object_ids_to_class_labels(self.object_ids, self.name_to_class)
-        self.name_to_mask_value = {"ape": 21,
-                                   "can": 106,
-                                   "cat": 128,
-                                   "driller": 170,
-                                   "duck": 191,
-                                   "eggbox": 213,
-                                   "glue": 234,
-                                   "holepuncher": 255}
+        self.name_to_mask_value = {"cube": 200,
+                                   "sock": 100}
         
         #check and set the rotation representation and the number of parameters to use
         self.init_num_rotation_parameters(**kwargs)
@@ -98,13 +92,13 @@ class OcclusionGenerator(Generator):
         self.object_path = self.object_paths_and_ids[self.object_id]
         
         #get path containing infos about the valid examples. valid_poses subfolder needs to be copied manually in this dir
-        self.valid_annotations_path = os.path.join(self.object_path, "valid_poses")
-        if not self.check_path(self.valid_annotations_path):
-            print("\n\nError: The path {} containing the information about the valid annotations of the objects in the occlusion dataset was not found! please download and copy it in this dir {}".format(self.valid_annotations_path, self.object_path))
-            return None
+        #self.valid_annotations_path = os.path.join(self.object_path, "valid_poses")
+        #if not self.check_path(self.valid_annotations_path):
+        #    print("\n\nError: The path {} containing the information about the valid annotations of the objects in the occlusion dataset was not found! please download and copy it in this dir {}".format(self.valid_annotations_path, self.object_path))
+        #    return None
         
-        self.class_to_valid_examples, self.name_to_valid_examples = self.parse_valid_examples(self.valid_annotations_path, self.name_to_class)
-        
+        #self.class_to_valid_examples, self.name_to_valid_examples = self.parse_valid_examples(self.valid_annotations_path, self.name_to_class)
+        self.class_to_valid_examples = []
         #get all train or test data examples from the dataset in the given split
         if not "train" in kwargs or kwargs["train"]:
             self.data_file = os.path.join(self.object_path, "train.txt")
@@ -441,9 +435,19 @@ class OcclusionGenerator(Generator):
         #parse the example ids for the gt dict from filenames
         example_ids = [int(filename.split(".")[0]) for filename in all_filenames]
         filtered_gt_lists = [(gt_dict[key], key) for key in example_ids]#creates a list containing tuples of the example id and list of all annotations per image. usually one element but at object id 2 is also the occlusion dataset included
+        filtered_gts = []
         #filer out invalid annotations and annotations from objects not included in the occlusion dataset
-        filtered_gts = [[anno for anno in gt_list if anno["obj_id"] in self.object_ids.values() and example_id in class_to_valid_examples[self.object_ids_to_class_labels[anno["obj_id"]]]] for gt_list, example_id in filtered_gt_lists]
-                
+        #filtered_gts = [[anno for anno in gt_list if anno["obj_id"] in self.object_ids.values() and example_id in class_to_valid_examples[self.object_ids_to_class_labels[anno["obj_id"]]]] for gt_list, example_id in filtered_gt_lists]
+        start = 0
+        for gt_list,example_id in filtered_gt_lists:
+            #search all annotations with the given object id
+
+            all_annos = [anno for anno in gt_list]
+            filtered_gts.append([])
+            for anno in gt_list:
+                filtered_gts[start].append(anno)
+            start += 1
+
         filtered_infos = [info_dict[key] for key in example_ids] #filter info dicts containing camera calibration etc analogue to gts
         
         #insert camera calibration as 3x3 numpy array in the infos
@@ -490,6 +494,7 @@ class OcclusionGenerator(Generator):
     
         """
         all_annotations = []
+
         for single_gt_list, info, mask_path in zip(gt_list, info_list, mask_paths):
             num_annos = len(single_gt_list)
             #init annotations in the correct base format.
@@ -510,8 +515,8 @@ class OcclusionGenerator(Generator):
                 annotations["bboxes"][i, :], found_object = self.get_bbox_from_mask(mask, mask_value = self.name_to_mask_value[self.class_to_name[self.object_ids_to_class_labels[gt["obj_id"]]]])
                 if not found_object:
                     print("\nWarning: Did not find object in mask!")
-                    # print(mask_path)
-                    # print(gt["obj_id"])
+                    print(mask_path)
+                    print(gt["obj_id"])
                 #transform rotation into the needed representation
                 annotations["rotations"][i, :-2] = self.transform_rotation(np.array(gt["cam_R_m2c"]), self.rotation_representation)
                 annotations["rotations"][i, -2] = float(self.is_symmetric_object(gt["obj_id"]))
@@ -661,7 +666,7 @@ class OcclusionGenerator(Generator):
 
 if __name__ == "__main__":
     #test linemod generator
-    train_gen = OcclusionGenerator("/Datasets/Linemod_preprocessed/", use_6DoF_augmentation = True, use_colorspace_augmentation = True)
+    train_gen = OcclusionGenerator("/mydataset", use_6DoF_augmentation = True, use_colorspace_augmentation = True)
     #test_gen = OcclusionGenerator("/Datasets/Linemod_preprocessed/", train = False, shuffle_dataset = False, shuffle_groups = False)
     
     for i in range(100):

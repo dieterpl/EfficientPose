@@ -498,9 +498,11 @@ class Generator(keras.utils.Sequence):
             Boolean indicating if the object is found in the given mask or not
         """
         if mask_value is None:
+
             seg = np.where(mask != 0)
         else:
             seg = np.where(mask == mask_value)
+
         #check if mask is empty
         if seg[0].size <= 0 or seg[1].size <= 0:
             return np.zeros((4,), dtype = np.float32), False
@@ -508,7 +510,7 @@ class Generator(keras.utils.Sequence):
         min_y = np.min(seg[0])
         max_x = np.max(seg[1])
         max_y = np.max(seg[0])
-        
+
         return np.array([min_x, min_y, max_x, max_y], dtype = np.float32), True
     
     

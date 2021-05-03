@@ -46,7 +46,7 @@ def main():
 
     #input parameter
     phi = 0
-    path_to_weights = "./color_500e.h5"
+    path_to_weights = "checkpoints/pyramid1/object_16/phi_0_linemod_best_ADD-S.h5"
     # save_path = "./predictions/occlusion/" #where to save the images or None if the images should be displayed and not saved
     save_path = None
     image_extension = ".jpg"
@@ -54,7 +54,7 @@ def main():
     class_to_name = {0: "cube"} #Linemod use a single class with a name of the Linemod objects
     score_threshold = 0.8
     translation_scale_norm = 1000.0
-    draw_bbox_2d = True
+    draw_bbox_2d =False
     draw_name = True
     #you probably need to replace the linemod camera matrix with the one of your webcam
     camera_matrix = get_linemod_camera_matrix()
@@ -131,7 +131,7 @@ def main():
         color = (255, 255, 0)
         
         # Line thickness of 2 px
-        thickness = 2
+        thickness = 1
         
         # Using cv2.putText() method
         # See Obj:

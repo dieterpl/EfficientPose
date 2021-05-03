@@ -45,7 +45,7 @@ class LineModGenerator(Generator):
                  object_id,
                  image_extension = ".jpg",
                  shuffle_dataset = True,
-                  symmetric_objects = {"glue", 11, "eggbox", 10,"cube",16}, #set with names and indices of symmetric objects
+                  symmetric_objects = {"glue", 0, "eggbox", 1,"cube",16}, #set with names and indices of symmetric objects
                  **kwargs):
         """
         Initializes a Linemod generator

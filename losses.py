@@ -259,7 +259,7 @@ def calc_sym_distances(sym_points_pred, sym_points_target):
     sym_points_pred = tf.expand_dims(sym_points_pred, axis = 2)
     sym_points_target = tf.expand_dims(sym_points_target, axis = 1)
     distances = tf.reduce_min(tf.norm(sym_points_pred - sym_points_target, axis = -1), axis = -1)
-    
+
     return tf.reduce_mean(distances, axis = -1)
     
 def calc_asym_distances(asym_points_pred, asym_points_target):
