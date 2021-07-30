@@ -30,157 +30,14 @@ import os
 import math
 
 import tensorflow as tf
-
+import time
 from model import build_EfficientPose
 from utils import preprocess_image
 from utils.visualization import draw_detections
 import flask
-from multiprocessing import Process, Queue
-import time
-def main(queues):
-    """
-    Run EfficientPose in inference mode live on webcam.
-    
-    """
-    
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    allow_gpu_growth_memory()
-
-    #input parameter
-    phi = 0
-    path_to_weights = "model_orange_cube_v2.h5"
-    # save_path = "./predictions/occlusion/" #where to save the images or None if the images should be displayed and not saved
-    save_path = None
-    image_extension = ".jpg"
-    class_to_name = {0: "ape", 1: "can", 2: "cat", 3: "driller", 4: "duck", 5: "eggbox", 6: "glue", 7: "holepuncher"} #Occlusion
-    class_to_name = {0: "cube"} #Linemod use a single class with a name of the Linemod objects
-    score_threshold = 0.99999
-    translation_scale_norm = 1000.0
-    draw_bbox_2d =False
-    draw_name = True
-    #you probably need to replace the linemod camera matrix with the one of your webcam
-    camera_matrix = get_linemod_camera_matrix()
-    name_to_3d_bboxes = get_linemod_3d_bboxes()
-    class_to_3d_bboxes = {class_idx: name_to_3d_bboxes[name] for class_idx, name in class_to_name.items()} 
-    
-    num_classes = len(class_to_name)
-    
-    #build model and load weights
-    model, image_size = build_model_and_load_weights(phi, num_classes, score_threshold, path_to_weights)
-    
-    webcam = cv2.VideoCapture("http://130.149.238.251:8080/stream/video.mjpeg")
-    webcam.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # set buffer size 
-    init_distance = 0
-    delta = 100
-    #inferencing
-    print("\nStarting inference...\n")
-    i = 0
-    k = 100
-    while k>0:
-        got_image, image = webcam.read()
-        k-=1
-
-    while True:
-        #load image
-        for i in range(2):
-                got_image, image = webcam.read()
-        if not got_image:
-            continue
-        
-        #scale_percent = 640./1920. # percent of original size
-        #width = int(image.shape[1] * scale_percent)
-        #height = int(image.shape[0] * scale_percent)
-        #dim = (width, height)
-        
-        # resize image
-        #image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
-        
-        original_image = image.copy()
-        
-        #preprocessing
-        input_list, scale = preprocess(image, image_size, camera_matrix, translation_scale_norm)
-        
-        #predict
-        boxes, scores, labels, rotations, translations = model.predict_on_batch(input_list)
-
-        #postprocessing
-        boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
-
-        if(boxes.shape[0]>0 and init_distance==0):
-            init_distance = np.linalg.norm(translations)
-        
-        draw_detections(original_image,
-                        boxes,
-                        scores,
-                        labels,
-                        rotations,
-                        translations,
-                        class_to_bbox_3D = class_to_3d_bboxes,
-                        camera_matrix = camera_matrix,
-                        label_to_name = class_to_name,
-                        draw_bbox_2d = draw_bbox_2d,
-                        draw_name = draw_name)
-        
-        #print(rotations,translations)
-
-        # font
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        
-        # org
-        org = (50, 50)
-              # org
-        org1 = (50, 100)  
-        # fontScale
-        fontScale = 1
-        
-        # Blue color in BGR
-        color = (255, 255, 0)
-        
-        # Line thickness of 2 px
-        thickness = 1
-        
-        # Using cv2.putText() method
-        # See Obj:
-        if(boxes.shape[0]>0):
-            original_image = cv2.putText(original_image, 'Dist:'+str(np.round(np.linalg.norm(translations))), org, font, 
-                            fontScale, color, thickness, cv2.LINE_AA)
-            #if(init_distance-np.linalg.norm(translations)>delta):
-            #    original_image = cv2.putText(original_image, 'Hand', org1, font, 
-            #        fontScale, color, thickness, cv2.LINE_AA)
-            #else:
-            #    original_image = cv2.putText(original_image, 'Dropped', org1, font, 
-            #        fontScale, color, thickness, cv2.LINE_AA)
-        #display image with predictions
-        if(len(queues)==2):
-            # Clean queues
-            if(queues[0].qsize()>0):
-                for i in range(queues[0].qsize()-1):
-                    for i in range(2):
-                       queues[i].get()
-            # Input fresh data
-            ts = int(time.time())
-            queues[0].put(original_image)
-            data = (boxes,scores,labels,rotations,translations,ts)
-            queues[1].put(data)
-            print(queues[0].qsize())
-        else:
-            cv2.imshow('image with predictions', original_image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                return "END"
-        if not save_path is None:
-            #images to the given path
-            os.makedirs(save_path, exist_ok = True)
-            cv2.imwrite(os.path.join(save_path, "frame_{}".format(i) + image_extension), original_image)
-            
-        i += 1
-    #    return "test"
-    #app.run(host="0.0.0.0")
-        
-    #release webcam and close windows
-    webcam.release()
-    cv2.destroyAllWindows()
-    
-    
+from flask import send_file
+from tensorflow.python.keras.backend import set_session
+from tensorflow.python.keras.models import load_model
 def allow_gpu_growth_memory():
     """
         Set allow growth GPU memory to true
@@ -380,5 +237,156 @@ def postprocess(boxes, scores, labels, rotations, translations, scale, score_thr
     return boxes, scores, labels, rotations, translations
 
 
-if __name__ == '__main__':
-    main([])
+
+"""
+Run EfficientPose in inference mode live on webcam.
+
+"""
+# FLASK 
+
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+allow_gpu_growth_memory()
+
+#input parameter
+phi = 0
+path_to_weights = "model_orange_cube_v2.h5"
+# save_path = "./predictions/occlusion/" #where to save the images or None if the images should be displayed and not saved
+save_path = "img"
+image_extension = ".jpg"
+class_to_name = {0: "ape", 1: "can", 2: "cat", 3: "driller", 4: "duck", 5: "eggbox", 6: "glue", 7: "holepuncher"} #Occlusion
+class_to_name = {0: "cube"} #Linemod use a single class with a name of the Linemod objects
+score_threshold = 0.9999
+translation_scale_norm = 1000.0
+draw_bbox_2d =False
+draw_name = True
+#you probably need to replace the linemod camera matrix with the one of your webcam
+camera_matrix = get_linemod_camera_matrix()
+name_to_3d_bboxes = get_linemod_3d_bboxes()
+class_to_3d_bboxes = {class_idx: name_to_3d_bboxes[name] for class_idx, name in class_to_name.items()} 
+
+num_classes = len(class_to_name)
+
+config = tf.ConfigProto()
+sess = tf.Session(config=config)
+set_session(sess)
+#build model and load weights
+global model
+model, image_size = build_model_and_load_weights(phi, num_classes, score_threshold, path_to_weights)
+global graph
+graph = tf.get_default_graph() 
+
+init_distance = 0
+delta = 100
+
+global webcam
+webcam = cv2.VideoCapture("http://130.149.238.253:8080/stream/video.mjpeg")
+#inferencing
+print("\nStarting inference...\n")
+i = 0
+#while True:
+app = flask.Flask(__name__)
+app.config['DEBUG'] = True
+
+@app.route('/',methods=['GET'])
+def home():
+    global sess
+    global graph
+    global webcam
+    init_distance = 0
+    delta = 100
+    with graph.as_default():    
+        set_session(sess)
+        #load image
+        got_image, image = webcam.read()
+        if( not got_image):
+            webcam = cv2.VideoCapture("http://130.149.238.247:8080/stream/video.mjpeg")
+            return "No IMG!"
+        scale_percent = 640./1920. # percent of original size
+        width = int(image.shape[1] * scale_percent)
+        height = int(image.shape[0] * scale_percent)
+        dim = (width, height)
+        
+        # resize image
+        image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
+        
+        original_image = image.copy()
+        print(image.shape)
+        #preprocessing
+        input_list, scale = preprocess(image, image_size, camera_matrix, translation_scale_norm)
+        
+        #predict
+        boxes, scores, labels, rotations, translations = model.predict_on_batch(input_list)
+
+        #postprocessing
+        boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
+
+        if(boxes.shape[0]>0 and init_distance==0):
+            init_distance = np.linalg.norm(translations)
+        
+        draw_detections(original_image,
+                        boxes,
+                        scores,
+                        labels,
+                        rotations,
+                        translations,
+                        class_to_bbox_3D = class_to_3d_bboxes,
+                        camera_matrix = camera_matrix,
+                        label_to_name = class_to_name,
+                        draw_bbox_2d = draw_bbox_2d,
+                        draw_name = draw_name)
+        
+        print(rotations,translations)
+
+
+
+                
+        # font
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        
+        # org
+        org = (50, 50)
+              # org
+        org1 = (50, 100)  
+        # fontScale
+        fontScale = 1
+        
+        # Blue color in BGR
+        color = (255, 255, 0)
+        
+        # Line thickness of 2 px
+        thickness = 1
+        
+        # Using cv2.putText() method
+        # See Obj:
+        if(boxes.shape[0]>0):
+            original_image = cv2.putText(original_image, 'Dist:'+str(np.round(np.linalg.norm(translations))), org, font, 
+                            fontScale, color, thickness, cv2.LINE_AA)
+            if(init_distance-np.linalg.norm(translations)>delta):
+                original_image = cv2.putText(original_image, 'Hand', org1, font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
+            else:
+                original_image = cv2.putText(original_image, 'Dropped', org1, font, 
+                    fontScale, color, thickness, cv2.LINE_AA)
+        #display image with predictions
+        #cv2.imshow('image with predictions', original_image)
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    return "END"
+        if not save_path is None:
+            #images to the given path
+            os.makedirs(save_path, exist_ok = True)
+            cv2.imwrite(os.path.join(save_path, "frame" + image_extension), image)
+        if(len(boxes>0)):
+            return "{boxes:"+str(boxes[0])+"\n scores:"+str(scores[0])+"\n labels:"+str(labels[0])+"\n rotations:"+str(rotations[0])+"\n translations:"+str(translations[0])+"}"
+        else:
+            return "{}"
+@app.route('/get_image')
+def get_image():    
+    return send_file("img/frame.jpg", mimetype='image/jpg')
+app.run(host="0.0.0.0")
+
+    
+#release webcam and close windows
+webcam.release()
+
+#cv2.destroyAllWindows()

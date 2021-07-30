@@ -42,10 +42,10 @@ class OcclusionGenerator(Generator):
     """
     def __init__(self,
                  dataset_base_path,
-                 object_ids = {"cube": 1, "sock": 2}, #dictionary with the names and object ids of the occlusion dataset
+                 object_ids = {"cube": 1}, #dictionary with the names and object ids of the occlusion dataset
                  image_extension = ".jpg",
                  shuffle_dataset = True,
-                  symmetric_objects = {"cube", 1, "sock", 2}, #set with names and indices of symmetric objects
+                  symmetric_objects = {"cube", 1}, #set with names and indices of symmetric objects
                  **kwargs):
         """
         Initializes a Occlusion generator
@@ -68,11 +68,10 @@ class OcclusionGenerator(Generator):
         self.object_id = 2 #hardcored for occlusion
         
         #set the class and name dict for mapping each other
-        self.class_to_name = {0: "cube", 1: "sock"}
+        self.class_to_name = {0: "cube"}
         self.name_to_class = {val: key for key, val in self.class_to_name.items()}
         self.object_ids_to_class_labels, self.class_labels_to_object_ids = self.map_object_ids_to_class_labels(self.object_ids, self.name_to_class)
-        self.name_to_mask_value = {"cube": 200,
-                                   "sock": 100}
+        self.name_to_mask_value = {"cube": 255}
         
         #check and set the rotation representation and the number of parameters to use
         self.init_num_rotation_parameters(**kwargs)
@@ -162,6 +161,7 @@ class OcclusionGenerator(Generator):
         name_to_model_3d_diameters = dict()
         
         for object_id, class_label in object_ids_to_class_labels.items():
+            print(all_models_dict)
             class_to_model_3d_diameters[class_label] = all_models_dict[object_id]["diameter"]
             name_to_model_3d_diameters[class_to_name[class_label]] = all_models_dict[object_id]["diameter"]
             
@@ -441,12 +441,14 @@ class OcclusionGenerator(Generator):
         start = 0
         for gt_list,example_id in filtered_gt_lists:
             #search all annotations with the given object id
-
-            all_annos = [anno for anno in gt_list]
-            filtered_gts.append([])
-            for anno in gt_list:
-                filtered_gts[start].append(anno)
-            start += 1
+            if gt_list != None:
+                all_annos = [anno for anno in gt_list]
+                filtered_gts.append([])
+                for anno in gt_list:
+                    filtered_gts[start].append(anno)
+                start += 1
+            else:
+                print("GT Empty",example_id)
 
         filtered_infos = [info_dict[key] for key in example_ids] #filter info dicts containing camera calibration etc analogue to gts
         
