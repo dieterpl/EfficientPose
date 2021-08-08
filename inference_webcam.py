@@ -68,22 +68,26 @@ def main(queues):
     #build model and load weights
     model, image_size = build_model_and_load_weights(phi, num_classes, score_threshold, path_to_weights)
     
-    webcam = cv2.VideoCapture("http://130.149.238.251:8080/stream/video.mjpeg")
+    webcam = cv2.VideoCapture("http://130.149.238.246:8080/stream/video.mjpeg")
     webcam.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # set buffer size 
     init_distance = 0
     delta = 100
     #inferencing
     print("\nStarting inference...\n")
-    i = 0
     k = 100
     while k>0:
         got_image, image = webcam.read()
         k-=1
-
+    calc_fps=False
+    if(len(queues)==0):
+        calc_fps=True
+        
     while True:
+        if(calc_fps):
+            start_time = time.time()*1000.
         #load image
-        for i in range(2):
-                got_image, image = webcam.read()
+        #for i in range(1):
+        got_image, image = webcam.read()
         if not got_image:
             continue
         
@@ -108,7 +112,7 @@ def main(queues):
 
         if(boxes.shape[0]>0 and init_distance==0):
             init_distance = np.linalg.norm(translations)
-        
+    
         draw_detections(original_image,
                         boxes,
                         scores,
@@ -120,8 +124,7 @@ def main(queues):
                         label_to_name = class_to_name,
                         draw_bbox_2d = draw_bbox_2d,
                         draw_name = draw_name)
-        
-        #print(rotations,translations)
+    
 
         # font
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -141,7 +144,7 @@ def main(queues):
         
         # Using cv2.putText() method
         # See Obj:
-        if(boxes.shape[0]>0):
+        if(boxes.shape[0]>0 and calc_fps):
             original_image = cv2.putText(original_image, 'Dist:'+str(np.round(np.linalg.norm(translations))), org, font, 
                             fontScale, color, thickness, cv2.LINE_AA)
             #if(init_distance-np.linalg.norm(translations)>delta):
@@ -158,7 +161,7 @@ def main(queues):
                     for i in range(2):
                        queues[i].get()
             # Input fresh data
-            ts = int(time.time())
+            ts = int(time.time()*1000.)
             queues[0].put(original_image)
             data = (boxes,scores,labels,rotations,translations,ts)
             queues[1].put(data)
@@ -172,10 +175,11 @@ def main(queues):
             os.makedirs(save_path, exist_ok = True)
             cv2.imwrite(os.path.join(save_path, "frame_{}".format(i) + image_extension), original_image)
             
-        i += 1
-    #    return "test"
-    #app.run(host="0.0.0.0")
         
+        if(calc_fps):
+            end_time = time.time()*1000.
+            print("FPS",1000/(end_time-start_time))
+    
     #release webcam and close windows
     webcam.release()
     cv2.destroyAllWindows()
