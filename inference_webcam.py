@@ -156,11 +156,6 @@ def main(queues):
             #        fontScale, color, thickness, cv2.LINE_AA)
         #display image with predictions
         if(len(queues)==2):
-            # Clean queues
-            if(queues[0].qsize()>0):
-                for i in range(queues[0].qsize()-1):
-                    for i in range(2):
-                       queues[i].get()
             # Input fresh data
             ts = int(time.time()*1000.)
             queues[0].put(original_image)

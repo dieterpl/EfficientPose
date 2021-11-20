@@ -133,8 +133,10 @@ def main(queues):
             image = np.asanyarray(cframe.get_data())
             got_image = True
             if not cframe:
+                print("IM DEAD")
                 got_image = False
-                continue
+
+            print("GOT IMAGE",image.shape)
             
             #scale_percent = 640./1920. # percent of original size
             #width = int(image.shape[1] * scale_percent)
@@ -154,7 +156,7 @@ def main(queues):
 
             #postprocessing
             boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
-
+            print("GOT Predictions",boxes)
             if(boxes.shape[0]>0 and init_distance==0):
                 init_distance = np.linalg.norm(translations)
 
@@ -200,28 +202,25 @@ def main(queues):
                 #    original_image = cv2.putText(original_image, 'Dropped', org1, font, 
                 #        fontScale, color, thickness, cv2.LINE_AA)
             #display image with predictions
+            print("Starting the tread",len(queues))
             if(len(queues)==2):
-                # Clean queues
-                if(queues[0].qsize()>0):
-                    for i in range(queues[0].qsize()-1):
-                        for i in range(2):
-                            queues[i].get()
                 # Input fresh data
                 ts = int(time.time()*1000.)
                 queues[0].put(original_image)
                 data = (boxes,scores,labels,rotations,translations,ts)
                 queues[1].put(data)
                 #print(queues[0].qsize())
-            else:
-                cv2.imshow('image with predictions', original_image)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    return "END"
+                
+
+            cv2.imshow('image with predictions', original_image)
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                return "END"
             if not save_path is None:
                 #images to the given path
                 os.makedirs(save_path, exist_ok = True)
                 cv2.imwrite(os.path.join(save_path, "frame_{}".format(i) + image_extension), original_image)
                 
-            
+            print("Done")
             if(calc_fps):
                 end_time = time.time()*1000.
                 print("FPS",1000/(end_time-start_time))

@@ -19,10 +19,11 @@ def get_last_from_queues():
     frame = []
     data = []
     length = data_queue.qsize()
-    #print("Queue length:",length)
+    
     for i in range(length):
         frame = frame_queue.get()    
         data = data_queue.get()
+
     return frame,data
 
 def cvt_list(data):
