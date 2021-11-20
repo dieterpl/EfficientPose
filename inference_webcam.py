@@ -56,7 +56,7 @@ def main(queues):
     class_to_name = {0: "cube"} #Linemod use a single class with a name of the Linemod objects
     score_threshold = 0.99999
     translation_scale_norm = 1000.0
-    draw_bbox_2d =False
+    draw_bbox_2d =True
     draw_name = True
     #you probably need to replace the linemod camera matrix with the one of your webcam
     camera_matrix = get_linemod_camera_matrix()
@@ -123,6 +123,7 @@ def main(queues):
                         camera_matrix = camera_matrix,
                         label_to_name = class_to_name,
                         draw_bbox_2d = draw_bbox_2d,
+                        draw_axis = True,
                         draw_name = draw_name)
     
 
@@ -165,7 +166,7 @@ def main(queues):
             queues[0].put(original_image)
             data = (boxes,scores,labels,rotations,translations,ts)
             queues[1].put(data)
-            print(queues[0].qsize())
+            #print(queues[0].qsize())
         else:
             cv2.imshow('image with predictions', original_image)
             if cv2.waitKey(1) & 0xFF == ord('q'):

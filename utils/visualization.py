@@ -81,7 +81,7 @@ def draw_boxes(image, boxes, color, thickness = 2):
     for b in boxes:
         draw_box(image, b, color, thickness=thickness)
         
-def draw_bbox_8_2D(draw_img, bbox_8_2D, color = (0, 255, 0), thickness = 2):
+def draw_bbox_8_2D(draw_img, bbox_8_2D, color = (0, 255, 0), thickness = 2,draw_3d=False):
     """ Draws the 2D projection of a 3D model's cuboid on an image with a given color.
 
     # Arguments
@@ -93,22 +93,22 @@ def draw_bbox_8_2D(draw_img, bbox_8_2D, color = (0, 255, 0), thickness = 2):
     #convert bbox to int and tuple
     bbox = np.copy(bbox_8_2D).astype(np.int32)
     bbox = tuple(map(tuple, bbox))
-    
-    #lower level
-    cv2.line(draw_img, bbox[0], bbox[1], color, thickness)
-    cv2.line(draw_img, bbox[1], bbox[2], color, thickness)
-    cv2.line(draw_img, bbox[2], bbox[3], color, thickness)
-    cv2.line(draw_img, bbox[0], bbox[3], color, thickness)
-    #upper level
-    cv2.line(draw_img, bbox[4], bbox[5], color, thickness)
-    cv2.line(draw_img, bbox[5], bbox[6], color, thickness)
-    cv2.line(draw_img, bbox[6], bbox[7], color, thickness)
-    cv2.line(draw_img, bbox[4], bbox[7], color, thickness)
-    #sides
-    cv2.line(draw_img, bbox[0], bbox[4], color, thickness)
-    cv2.line(draw_img, bbox[1], bbox[5], color, thickness)
-    cv2.line(draw_img, bbox[2], bbox[6], color, thickness)
-    cv2.line(draw_img, bbox[3], bbox[7], color, thickness)
+    if(draw_3d):
+        #lower level
+        cv2.line(draw_img, bbox[0], bbox[1], color, thickness)
+        cv2.line(draw_img, bbox[1], bbox[2], color, thickness)
+        cv2.line(draw_img, bbox[2], bbox[3], color, thickness)
+        cv2.line(draw_img, bbox[0], bbox[3], color, thickness)
+        #upper level
+        cv2.line(draw_img, bbox[4], bbox[5], color, thickness)
+        cv2.line(draw_img, bbox[5], bbox[6], color, thickness)
+        cv2.line(draw_img, bbox[6], bbox[7], color, thickness)
+        cv2.line(draw_img, bbox[4], bbox[7], color, thickness)
+        #sides
+        cv2.line(draw_img, bbox[0], bbox[4], color, thickness)
+        cv2.line(draw_img, bbox[1], bbox[5], color, thickness)
+        cv2.line(draw_img, bbox[2], bbox[6], color, thickness)
+        cv2.line(draw_img, bbox[3], bbox[7], color, thickness)
     
     #check if centerpoint is also available to draw
     if len(bbox) == 9:
@@ -137,7 +137,7 @@ def project_bbox_3D_to_2D(points_bbox_3D, rotation_vector, translation_vector, c
     
 
 
-def draw_detections(image, boxes, scores, labels, rotations, translations, class_to_bbox_3D, camera_matrix, color = None, label_to_name = None, score_threshold = 0.5, draw_bbox_2d = False, draw_name = False):
+def draw_detections(image, boxes, scores, labels, rotations, translations, class_to_bbox_3D, camera_matrix, color = None, label_to_name = None, score_threshold = 0.5,draw_axis = False, draw_bbox_2d = False, draw_name = False):
     """ Draws detections in an image.
 
     # Arguments
@@ -163,10 +163,10 @@ def draw_detections(image, boxes, scores, labels, rotations, translations, class
         if draw_bbox_2d:
             draw_box(image, boxes[i, :], color = c)
         translation_vector = translations[i, :]
-
-        image = aruco.drawAxis(image, camera_matrix, None, rotations[i, :],translation_vector, 55.1)
+        if(draw_axis==True):
+            image = aruco.drawAxis(image, camera_matrix, None, rotations[i, :],translation_vector, 55.1)
         points_bbox_2D = project_bbox_3D_to_2D(class_to_bbox_3D[labels[i]], rotations[i, :], translation_vector, camera_matrix, append_centerpoint = True)
-        draw_bbox_8_2D(image, points_bbox_2D, color = c)
+        draw_bbox_8_2D(image, points_bbox_2D, color = c,draw_3d=False)
         if draw_name:
             if isinstance(label_to_name, dict):
                 name = label_to_name[labels[i]] if label_to_name else labels[i]

@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import cv2
 import time
-from inference_webcam import main
+from inference_webcam_realsense import main
 import flask
 from flask import send_file
 from copy import copy
@@ -19,7 +19,7 @@ def get_last_from_queues():
     frame = []
     data = []
     length = data_queue.qsize()
-    print("Queue length:",length)
+    #print("Queue length:",length)
     for i in range(length):
         frame = frame_queue.get()    
         data = data_queue.get()
