@@ -39,9 +39,31 @@ def make_realsense():
     # Start streaming
     pipeline.start(config)
     return pipeline
+def draw_rectangle(image, centre, theta, width, height):
+    theta = np.radians(theta)
+    c, s = np.cos(theta), np.sin(theta)
+    R = np.matrix('{} {}; {} {}'.format(c, -s, s, c))
+    # print(R)
+    print(centre[0])
+    p1 = [ + width / 2,  + height / 2]
+    p2 = [- width / 2,  + height / 2]
+    p3 = [ - width / 2, - height / 2]
+    p4 = [ + width / 2,  - height / 2]
+    p1_new = np.dot(p1, R)+ centre
+    p2_new = np.dot(p2, R)+ centre
+    p3_new = np.dot(p3, R)+ centre
+    p4_new = np.dot(p4, R)+ centre
+    print(p1_new)
+    img = cv2.line(image, (int(p1_new[0, 0]), int(p1_new[0, 1])), (int(p2_new[0, 0]), int(p2_new[0, 1])), (255, 0, 0), 1)
+    img = cv2.line(img, (int(p2_new[0, 0]), int(p2_new[0, 1])), (int(p3_new[0, 0]), int(p3_new[0, 1])), (255, 0, 0), 1)
+    img = cv2.line(img, (int(p3_new[0, 0]), int(p3_new[0, 1])), (int(p4_new[0, 0]), int(p4_new[0, 1])), (255, 0, 0), 1)
+    img = cv2.line(img, (int(p4_new[0, 0]), int(p4_new[0, 1])), (int(p1_new[0, 0]), int(p1_new[0, 1])), (255, 0, 0), 1)
+    img = cv2.line(img, (int(p2_new[0, 0]), int(p2_new[0, 1])), (int(p4_new[0, 0]), int(p4_new[0, 1])), (255, 0, 0), 1)
+    img = cv2.line(img, (int(p1_new[0, 0]), int(p1_new[0, 1])), (int(p3_new[0, 0]), int(p3_new[0, 1])), (255, 0, 0), 1)
 
+pipeline = make_realsense()
 try:
-    pipeline = make_realsense()
+    i = 0
     while True:
 
         # Wait for a coherent pair of frames: depth and color
@@ -52,10 +74,15 @@ try:
         if not depth_frame or not color_frame:
             continue
         print(np.asanyarray(color_frame.get_data()).shape)
+        image = np.asanyarray(color_frame.get_data())
         # Show images
+        print(i%90)
+        draw_rectangle(image,[200,200],90-i%90,50,50)
+        i+=1
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         cv2.imshow('RealSense', np.asanyarray(color_frame.get_data()))
         cv2.waitKey(1)
+
 
 finally:
 

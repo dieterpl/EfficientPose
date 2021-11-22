@@ -166,7 +166,7 @@ def draw_detections(image, boxes, scores, labels, rotations, translations, class
         if(draw_axis==True):
             image = aruco.drawAxis(image, camera_matrix, None, rotations[i, :],translation_vector, 55.1)
         points_bbox_2D = project_bbox_3D_to_2D(class_to_bbox_3D[labels[i]], rotations[i, :], translation_vector, camera_matrix, append_centerpoint = True)
-        draw_bbox_8_2D(image, points_bbox_2D, color = c,draw_3d=False)
+        draw_bbox_8_2D(image, points_bbox_2D, color = c,draw_3d=True)
         if draw_name:
             if isinstance(label_to_name, dict):
                 name = label_to_name[labels[i]] if label_to_name else labels[i]

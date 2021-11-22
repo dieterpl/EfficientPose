@@ -118,7 +118,7 @@ def main(queues):
             
 
     #    k-=1
-    calc_fps=False
+    calc_fps=True
     if(len(queues)==0):
         calc_fps=True
     try:
@@ -136,7 +136,6 @@ def main(queues):
                 print("IM DEAD")
                 got_image = False
 
-            print("GOT IMAGE",image.shape)
             
             #scale_percent = 640./1920. # percent of original size
             #width = int(image.shape[1] * scale_percent)
@@ -156,9 +155,6 @@ def main(queues):
 
             #postprocessing
             boxes, scores, labels, rotations, translations = postprocess(boxes, scores, labels, rotations, translations, scale, score_threshold)
-            print("GOT Predictions",boxes)
-            if(boxes.shape[0]>0 and init_distance==0):
-                init_distance = np.linalg.norm(translations)
 
             draw_detections(original_image,
                             boxes,
@@ -169,7 +165,7 @@ def main(queues):
                             class_to_bbox_3D = class_to_3d_bboxes,
                             camera_matrix = camera_matrix,
                             label_to_name = class_to_name,
-                            draw_bbox_2d = draw_bbox_2d,
+                            draw_bbox_2d = False,
                             draw_axis = True,
                             draw_name = draw_name)
 
@@ -202,7 +198,7 @@ def main(queues):
                 #    original_image = cv2.putText(original_image, 'Dropped', org1, font, 
                 #        fontScale, color, thickness, cv2.LINE_AA)
             #display image with predictions
-            print("Starting the tread",len(queues))
+           
             if(len(queues)==2):
                 # Input fresh data
                 ts = int(time.time()*1000.)
@@ -219,8 +215,7 @@ def main(queues):
                 #images to the given path
                 os.makedirs(save_path, exist_ok = True)
                 cv2.imwrite(os.path.join(save_path, "frame_{}".format(i) + image_extension), original_image)
-                
-            print("Done")
+
             if(calc_fps):
                 end_time = time.time()*1000.
                 print("FPS",1000/(end_time-start_time))
