@@ -4,13 +4,14 @@ import sys
 import numpy as np
 import cv2
 import time
-from inference_webcam_realsense import main
+from inference_webcam import main
+#from inference_webcam_realsense import main
 import flask
 from flask import send_file
 from copy import copy
 
-frame_queue = Queue()
-data_queue = Queue()
+frame_queue = Queue(maxsize=25*60*3)
+data_queue = Queue(maxsize=25*60*3)
 
 app = flask.Flask(__name__)
 app.config['DEBUG'] = False

@@ -68,7 +68,7 @@ def main(queues):
     #build model and load weights
     model, image_size = build_model_and_load_weights(phi, num_classes, score_threshold, path_to_weights)
     
-    webcam = cv2.VideoCapture("http://130.149.238.246:8080/stream/video.mjpeg")
+    webcam = cv2.VideoCapture("http://130.149.238.251:8080/stream/video.mjpeg")
     webcam.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # set buffer size 
     init_distance = 0
     delta = 100
@@ -162,10 +162,10 @@ def main(queues):
             data = (boxes,scores,labels,rotations,translations,ts)
             queues[1].put(data)
             #print(queues[0].qsize())
-        else:
-            cv2.imshow('image with predictions', original_image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                return "END"
+
+        cv2.imshow('image with predictions', original_image)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            return "END"
         if not save_path is None:
             #images to the given path
             os.makedirs(save_path, exist_ok = True)
